@@ -1,0 +1,2 @@
+rem g++ -D __WINDOWS_MM__ -Iinclude src\RtMidi.cpp src\drumbox.cpp -Llib -lrtmidi -lwinmm -o build\drumbox.exe
+g++ -D __WINDOWS_MM__ -g -Iinclude src\RtMidi.cpp src\drumbox.cpp -lwinmm lib\teVirtualMIDI64.lib lib\librtmidi.lib -o build\drumbox.exe
