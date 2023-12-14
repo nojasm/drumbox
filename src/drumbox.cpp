@@ -254,8 +254,6 @@ int main(int argc, char** argv) {
                     db->currentSequencerPage = index;
                 }
             } else if (topButton.button == LaunchpadTopButton::MIXER) {
-                db->mixerButtonDown = topButton.pressed;
-
                 if (db->shift) {
                     // TODO: If a sample is selected, only copy that one to all other pages
                     // Copy current page to all other pages
@@ -266,6 +264,8 @@ int main(int argc, char** argv) {
                             db->sequenceSteps[(page * 8 * 8) + i] = db->sequenceSteps[(db->currentSequencerPage * 8 * 8) + i];
                         }
                     }
+                } else if (topButton.pressed) {
+                    db->mixerButtonDown = !db->mixerButtonDown;
                 }
             } else if (topButton.button == LaunchpadTopButton::USER1) {
                 db->currentMode = Mode::SEQUENCER;
@@ -286,6 +286,7 @@ int main(int argc, char** argv) {
                 lp->setGridLight(6, i, ks == KeyState::SOLO ? 6 : 2);
                 lp->setGridLight(7, i, ks == KeyState::SOLO ? 6 : 2);
             }
+            lp->setTopLight(LaunchpadTopButton::MIXER, LIGHT_SELECTED);
         } else if (db->currentMode == Mode::SEQUENCER) {
             for (int i = 0; i < (8 * 8); i++) {
                 int cellIndex = i + (db->currentSequencerPage * 8 * 8);
