@@ -104,6 +104,10 @@ void DrumBox::midiEventCallback(vector<unsigned char> message) {
     }
 }
 
+/**
+ * Increment cursor by one. Reset the cursor if it is outside of the
+ * active pages
+*/
 void DrumBox::gotoNextSequencerStep() {
     if (currentStep + 1 >= (8 * 8 * useSequencerPages)) currentStep = 0;
     else currentStep++;
@@ -111,6 +115,11 @@ void DrumBox::gotoNextSequencerStep() {
     totalSteps++;
 }
 
+/**
+ * Go through all samples of the current sequencer step. Send MIDI signals
+ * to play a sample in a certain velocity. Also releases older keys again that
+ * were pressed before.
+*/
 void DrumBox::playSequencerStep() {
     vector<Note>* stepNotes = &sequenceSteps[currentStep];
 
@@ -132,7 +141,8 @@ void DrumBox::playSequencerStep() {
                 sendReleaseKey(key);
                 keyPressTimeout.erase(keyPressTimeout.find(key));
             }
-
+            
+            // Send midi signal to play the note
             this->sendNote(stepNotes->at(i));
             keyPressTimeout[key] = 0;
         }
@@ -187,6 +197,7 @@ void DrumBox::sendReleaseKey(unsigned char key) {
     this->sendMessageToHost(msg);
 }
 
+// TODO
 void DrumBox::close() {
     //midiIn->closePort();
     //midiOut->closePort();
@@ -259,9 +270,11 @@ int main(int argc, char** argv) {
             LaunchpadTopButtonState topButton = lp->topQueue.back();
             lp->topQueue.pop_back();
 
+            // Shift button
             if (topButton.button == LaunchpadTopButton::SESSION)
                 db->shift = topButton.pressed;
             
+            // Select page
             if (topButton.button == LaunchpadTopButton::UP || topButton.button == LaunchpadTopButton::DOWN || topButton.button == LaunchpadTopButton::LEFT || topButton.button == LaunchpadTopButton::RIGHT) {
                 int index = (int)topButton.button;
                 if (db->shift) {
@@ -286,17 +299,24 @@ int main(int argc, char** argv) {
                         }
                     }
                 } else if (topButton.pressed) {
+                    // Toggle mixer page. This can also be changed to
+                    // | db->mixerButtonDown = topButton.pressed |
+                    // to open the page while MIXER is pressed, instead of toggling it
+                    // TODO: Put this inside some kind of configuration file
                     db->mixerButtonDown = !db->mixerButtonDown;
                 }
             } else if (topButton.button == LaunchpadTopButton::USER1) {
+                // Change current mode to sequencer
                 db->currentMode = Mode::SEQUENCER;
             } else if (topButton.button == LaunchpadTopButton::USER2) {
+                // Change current mode to instrument
                 db->currentMode = Mode::INSTRUMENT;
             }
         }
 
         // Grid lights
         if (db->mixerButtonDown) {
+            // Mixer page
             for (int i = 0; i < 8; i++) {
                 KeyState ks = db->keyStates[(7 - i) + db->keyOffsetC];
                 // Mute buttons
@@ -307,8 +327,11 @@ int main(int argc, char** argv) {
                 lp->setGridLight(6, i, ks == KeyState::SOLO ? 6 : 2);
                 lp->setGridLight(7, i, ks == KeyState::SOLO ? 6 : 2);
             }
+
             lp->setTopLight(LaunchpadTopButton::MIXER, LIGHT_SELECTED);
+
         } else if (db->currentMode == Mode::SEQUENCER) {
+            // Sequencer page
             for (int i = 0; i < (8 * 8); i++) {
                 int cellIndex = i + (db->currentSequencerPage * 8 * 8);
                 if (db->currentNoteKey == -1) {
@@ -327,7 +350,10 @@ int main(int argc, char** argv) {
                 }
             }
         } else if (db->currentMode == Mode::INSTRUMENT) {
+            // Instrument page
             for (int x = 0; x < 8; x++) {
+                // Light up samples at the bottom. If a sample is pressed, light it
+                // up where it is pressed instead.
                 if (db->keyPresses[x + db->keyOffsetC] == -1)
                     lp->setGridLight(x, 7, LIGHT_BRIGHT);
                 else
@@ -338,16 +364,18 @@ int main(int argc, char** argv) {
         // Current page lights
         for (int i = 0; i < 4; i++) {
             if (db->shift) {
-                if (i != 2)
+                if (i != 2)  // Don't light up page 3 - looping 3 pages is stupid
                     lp->setTopLight((LaunchpadTopButton)i, 110);
                 
             } else {
                 int color = 0;
                 // Page is currently playing
                 if (db->isPlaying && (i * 8 * 8) <= db->currentStep && db->currentStep < ((i + 1) * 8 * 8)) color = LIGHT_CURSOR;
+
                 // Page is selected
                 else if (i == db->currentSequencerPage) color = LIGHT_SELECTED;
-                // Page will be played
+
+                // Page is activate and will be played
                 else if (i < db->useSequencerPages) color = LIGHT_LOW;
                 
                 lp->setTopLight((LaunchpadTopButton)i, color);
@@ -406,7 +434,7 @@ int main(int argc, char** argv) {
             // Ignore event if button was released
             // You can only place and remove samples if you have sample selected
             } else if (button->pressed && db->currentNoteKey != -1 && db->currentMode == Mode::SEQUENCER) {
-                // Normal note placing/removing move
+                // Get all notes that are in the current sequencer step
                 vector<Note>* thisCellNotes = &db->sequenceSteps[cellIndex + (db->currentSequencerPage * 8 * 8)];
 
                 Note note;
@@ -431,9 +459,10 @@ int main(int argc, char** argv) {
             } else if (db->currentMode == Mode::INSTRUMENT) {
                 db->keyPresses[button->x + db->keyOffsetC] = button->pressed ? button->y : -1;
                 if (button->pressed) {
+                    // Play pressed key instantly
                     Note note;
                     note.key = button->x + db->keyOffsetC;
-                    note.velocity = (button->y + 1) / 8.0;
+                    note.velocity = (button->y + 1) / 8.0;  // Calculate velocity by using the y value
                     db->sendNote(note);
                 } else {
                     // TODO: What happens if you play a key, then switch to SEQUENCE-MODE. Will the key be released or sth like that?
@@ -470,6 +499,7 @@ int main(int argc, char** argv) {
             }
         }
 
+        // Send changed light values to launchpad
         lp->updateLights();
     }
 
@@ -477,38 +507,7 @@ int main(int argc, char** argv) {
 }
 
 /*
-
-    TODO: Very important! Add a sleep mode that automatically does light shows randomly based on the beat. After pressing on a button, go into sequencer mode again with no sample selected
-
     TODOs:
     - autofill option, so that you can set 4 hihats and hit autofill and it automatically fills the rest of the pattern
-
-    - Use the SESSION button as a shift button
-    
-    USER 1
-        Switch between instrument and sequencer
-    
-    SESSION
-        acts as a shift button
-    
-    UP, DOWN, LEFT, RIGHT
-        Select one of four pages for the sequencer.
-        With SHIFT, you can set how many pages should be used.
-    
-    MIXER
-        - Do SHIFT + MIXER to copy the current page to all other pages
-        - You can press on one of the side buttons to select a velocity
-            - You will then place all new samples of the current sample
-              in that velocity
-            - If you also press shift, you can 
-        - On the grid, four lights per row/sample light up
-            - On the left of each row that has a sample, there are two buttons for soloing.
-                -> Press the first for soloing it
-                -> Hold the second to solo it while holding
-            - Same goes for the right with muting
-    Side buttons 1 - 8
-        Switch which sample you are currently editing
-
-    When pressing SHIFT, :
-        
+    - Very important! Add a sleep mode that automatically does light shows randomly based on the beat. After pressing on a button, go into sequencer mode again with no sample selected
 */

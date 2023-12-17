@@ -35,6 +35,7 @@ public:
     int channel = 3;
     int bpm = 120;
 
+    // Change this to change default mode on startup
     Mode currentMode = Mode::INSTRUMENT;
 
     int currentNoteKey = -1;
@@ -54,7 +55,9 @@ public:
     std::chrono::high_resolution_clock::time_point playStartTime = std::chrono::high_resolution_clock::now();
     std::chrono::high_resolution_clock::duration latency = std::chrono::milliseconds(20);
 
-    vector<vector<Note>> sequenceSteps;  // step[samples[sample]]
+    // This is basically the sequencer grid. A list of cells where every cell contains a list of samples
+    // step[samples[sample]]
+    vector<vector<Note>> sequenceSteps;
     int stepsPerBeat = 4;
     
     DrumBox();
