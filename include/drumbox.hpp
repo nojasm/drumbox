@@ -31,7 +31,7 @@ public:
     int totalSteps = 0;
     int currentSequencerPage = 0;
     int useSequencerPages = 1;  // 1/2/4 - Number of sequencer pages to actually play
-    int keyOffsetC = 36;  // Ableton index for c2
+    int keyOffsetC = 36;  // Ableton index for c1
     int channel = 3;
     int bpm = 120;
 

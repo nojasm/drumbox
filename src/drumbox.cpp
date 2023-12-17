@@ -29,18 +29,18 @@ void midiInCallback(LPVM_MIDI_PORT midiPort, LPBYTE midiDataBytes, DWORD length,
         return;
     }
 
-    printf("<--- [");
+    //printf("<--- [");
     vector<unsigned char> message;
     for (int i = 0; i < length; i++) {
         message.push_back(midiDataBytes[i]);
 
-        printf("%d", midiDataBytes[i]);
+        //printf("%d", midiDataBytes[i]);
 
-        if (i != length - 1)
-            printf(", ");
+        //if (i != length - 1)
+        //    printf(", ");
     }
 
-    printf("]\n");
+    //printf("]\n");
 
     instance->midiEventCallback(message);
 }
@@ -56,20 +56,23 @@ DrumBox::DrumBox() {
     // Initialize sequencer
     sequenceSteps.resize(8 * 8 * 4);  // 4 sequencer pages with 8x8 cells
 
-    Note kick;
-    kick.key = this->keyOffsetC;
-    kick.velocity = 1.0;
-
-    Note hihat;
-    hihat.key = this->keyOffsetC + 1;
-    hihat.velocity = 1.0;
-
+    // Initialize all velocities and key states
     for (int i = 0; i < 8; i++) {
         keyVelocities[i + this->keyOffsetC] = 1.0;
         keyStates[i + this->keyOffsetC] = KeyState::NONE;
         keyPresses[i + this->keyOffsetC] = -1;
     }
 
+    // Examples for default sequencer patters
+    /*Note kick;
+    kick.key = this->keyOffsetC;
+    kick.velocity = 1.0;
+
+    Note hihat;
+    hihat.key = this->keyOffsetC + 1;
+    hihat.velocity = 1.0;*/
+
+    // Place a simple pattern on the sequencer
     /*for (int i = 0; i < (8 * 8); i++) {
         if (i % 8 == 0)
             sequenceSteps[i].push_back(kick);
@@ -195,7 +198,28 @@ int keyToColorIndex(int key) {
 }
 
 int main(int argc, char** argv) {
+    // ignore this
+    std::string logo =
+    #include "logo.hpp"
+    ;
+    
+    printf(logo.c_str());
+
+    printf("https://github.com/nojasm/drumbox\n");
+
+
     DrumBox* db = new DrumBox();
+    
+    printf("Enter BPM: ");
+    db->bpm = -1;
+    scanf("%d", &db->bpm);
+
+    if (db->bpm <= 0 || db->bpm > 200) {
+        printf("failed.\n");
+        exit(-1);
+    }
+
+    printf("-----\n");
     
     Launchpad* lp = new Launchpad();
     printf("e after lp %d\n", GetLastError());
@@ -204,9 +228,6 @@ int main(int argc, char** argv) {
         printf("  jk its not connected, lol (the in one)\n");
     if (!lp->midiOut->isPortOpen())
         printf("  jk its not connected, lol (the out one)\n");
-        
-    if (argc == 2)
-        db->bpm = atoi(argv[1]);
 
     lp->resetGridLights();
     lp->updateLights(true);

@@ -155,7 +155,7 @@ Launchpad::Launchpad() {
     }
 
     if (portNumberIn == -1 || portNumberOut == -1) {
-        printf("Error: Launchpad not found on one or more ports");
+        printf("Error: Launchpad not found on one or more ports\n");
         exit(-1);
     }
 
